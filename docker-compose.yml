@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: yd
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./static:/app/static
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: yd_redis
+    ports:
+      - "6379:6379"
+    restart: always
