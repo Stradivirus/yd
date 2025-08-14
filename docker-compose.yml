@@ -5,7 +5,7 @@ services:
     build: .
     container_name: yd
     ports:
-      - "8000:8000"
+      - "8003:8000"
     volumes:
       - ./downloads:/app/downloads
       - ./static:/app/static
