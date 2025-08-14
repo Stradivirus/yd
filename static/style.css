@@ -8,19 +8,67 @@ body {
     justify-content: center;
     padding: 20px;
 }
-.container {
+
+/* 공통 컨테이너 스타일 */
+.container, .file-container {
     background: white;
-    padding: 2.5rem;
     border-radius: 20px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    width: 100%;
-    max-width: 500px;
+    padding: 2.5rem;
     transition: transform 0.3s ease;
-    min-height: 100%;
-    height: 100%;
-    box-sizing: border-box;
 }
+
 .container:hover { transform: translateY(-5px); }
+
+/* 공통 버튼 스타일 */
+.btn {
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1em;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.2rem;
+    font-size: 1.2rem;
+    width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:disabled { 
+    opacity: 0.6; 
+    cursor: not-allowed; 
+    transform: none; 
+}
+
+.download-btn {
+    background: #667eea;
+    color: white;
+    padding: 0.3em 1.1em;
+    box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+}
+
+.download-btn:hover { background: #4f46e5; }
+
+.delete-btn {
+    background: #f8d7da;
+    color: #d32f2f;
+    padding: 0.3em 0.4em;
+}
+
+.delete-btn:hover {
+    background: #e57373;
+    color: white;
+}
+
 h1 { text-align: center; margin-bottom: 2rem; color: #333; font-size: 2rem; }
 .input-group { margin-bottom: 2rem; }
 label { display: block; margin-bottom: 0.8rem; font-weight: bold; color: #555; font-size: 1.1rem; }

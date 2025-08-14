@@ -15,6 +15,4 @@ services:
   redis:
     image: redis:alpine
     container_name: yd_redis
-    ports:
-      - "6379:6379"
     restart: always

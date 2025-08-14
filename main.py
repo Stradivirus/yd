@@ -4,7 +4,6 @@ from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import yt_dlp
-import redis
 import json
 import time
 from datetime import datetime, timedelta
@@ -13,6 +12,7 @@ import re
 import threading
 import os
 import unicodedata
+from redis_connect import get_redis_connection, save_file_info, delete_file_info
 
 app = FastAPI(title="YouTube Downloader")
 
@@ -23,11 +23,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 downloads_dir = Path("downloads")
 downloads_dir.mkdir(exist_ok=True)
 
-# Redis 연결 (docker-compose 환경에서는 host='redis')
-redis_host = 'redis'
-redis_port = 6379
-r = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True)
-REDIS_EXPIRE = 60 * 60 * 24 * 3  # 3일
+# Redis 연결
+r = get_redis_connection()
 
 class DownloadRequest(BaseModel):
     url: str
@@ -78,7 +75,10 @@ async def download_video(request: DownloadRequest):
         ext = 'mp3' if format_type == 'mp3' else 'mp4'
         safe_title = safe_filename(title)
         filename = f"{safe_title}.{ext}"
-        filepath = downloads_dir / filename
+
+        # duration 체크
+        if duration and duration > 1800:
+            raise HTTPException(status_code=400, detail="30분 이상의 영상은 다운로드할 수 없습니다")
 
         if format_type == 'mp3':
             ydl_opts = {
@@ -106,56 +106,12 @@ async def download_video(request: DownloadRequest):
                 'playlist_items': '1',  # 무조건 첫 번째 영상만 다운로드
             }
 
-        # duration 체크는 위에서 info 추출 후 바로
-        if duration and duration > 1800:
-            raise HTTPException(status_code=400, detail="30분 이상의 영상은 다운로드할 수 없습니다")
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
         # Redis에 파일 정보 저장
-        now = int(time.time())
-        file_info = {
-            "filename": filename,
-            "title": title,
-            "format": format_type,
-            "created": now,
-            "expire": now + REDIS_EXPIRE
-        }
-        r.setex(f"file:{filename}", REDIS_EXPIRE, json.dumps(file_info))
-        return JSONResponse({
-            "success": True, 
-            "title": title,
-            "format": format_type,
-            "filename": filename,
-            "download_url": f"/downloads/{filename}",
-            "message": "다운로드가 완료되었습니다"
-        })
+        save_file_info(r, filename, title, format_type)
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            title = info.get('title', 'Unknown')
-            duration = info.get('duration', 0)
-            ext = 'mp3' if format_type == 'mp3' else 'mp4'
-            safe_title = safe_filename(title)
-            filename = f"{safe_title}.{ext}"
-            filepath = downloads_dir / filename
-
-            if duration and duration > 1800:
-                raise HTTPException(status_code=400, detail="30분 이상의 영상은 다운로드할 수 없습니다")
-            
-            ydl.download([url])
-            
-        # Redis에 파일 정보 저장
-        now = int(time.time())
-        file_info = {
-            "filename": filename,
-            "title": title,
-            "format": format_type,
-            "created": now,
-            "expire": now + REDIS_EXPIRE
-        }
-        r.setex(f"file:{filename}", REDIS_EXPIRE, json.dumps(file_info))
         return JSONResponse({
             "success": True, 
             "title": title,
@@ -226,7 +182,7 @@ def start_file_cleaner():
 @app.delete("/files/{filename}")
 def delete_file(filename: str):
     safe_name = safe_filename(filename)
-    r.delete(f"file:{safe_name}")
+    delete_file_info(r, safe_name)
     file_path = downloads_dir / safe_name
     try:
         if file_path.exists():
